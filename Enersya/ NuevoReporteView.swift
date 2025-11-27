@@ -5,112 +5,214 @@
 //  Created by Esau Gutiérrez on 09/10/25.
 //
 
-// En NuevoReporteView.swift
-
+// NuevoReporteView.swift
 import SwiftUI
 
 struct NuevoReporteView: View {
-    @EnvironmentObject var viewModel: ReporteViewModel
-    
-    // Estados para los campos del formulario
-    @State private var titulo: String = ""
-    @State private var detalles: String = "" // Estado vacío para usar un placeholder
-    @State private var firmaClienteData: Data?
-    @State private var firmaTecnicoData: Data?
-    @State private var fotoReporteData: Data?
-    
-    // Variable para controlar si el formulario está visible (se usa para cerrarlo)
-    @Environment(\.dismiss) var dismiss
-    
-    // Helper para el texto placeholder
-    private var detailsPlaceholder: String {
-        return "Escribe aquí la descripción detallada del reporte, incluyendo observaciones y coordenadas..."
-    }
-    
-    var body: some View {
-        NavigationView {
-            Form {
-                // Sección de Información Básica
-                Section(header: Text("Información Básica")) {
-                    TextField("Título del Reporte (Ej: Inspección 003)", text: $titulo)
-                }
-                
-                // Sección de Detalles y Descripción (con corrección de Auto Layout)
-                Section(header: Text("Detalles y Descripción")) {
-                    ZStack(alignment: .topLeading) {
-                        // TextEditor para escribir el contenido
-                        TextEditor(text: $detalles)
-                            .frame(height: 200)
-                            .border(Color.gray.opacity(0.2))
-                            .background(Color(.systemBackground))
-                        
-                        // Placeholder (Solo visible si el campo está vacío)
-                        if detalles.isEmpty {
-                            Text(detailsPlaceholder)
-                                .foregroundColor(Color(uiColor: .placeholderText))
-                                .padding(.top, 8)
-                                .padding(.leading, 5)
-                                .frame(height: 200, alignment: .topLeading)
-                                // *** CORRECCIÓN DE BLOQUEO TÁCTIL ***
-                                .allowsHitTesting(false)
-                        }
-                    }
-                }
-                
-                Section(header: Text("Evidencia Fotográfica")) {
-                    ImageCaptureView(fotoData: $fotoReporteData)
-                }
-                
-                
-                // NUEVA SECCIÓN: Firmas
-                Section(header: Text("Firmas de Aceptación")) {
-                    // Firma del Cliente
-                    SignatureCaptureView(firmaData: $firmaClienteData, title: "Firma del Cliente")
-                    
-                    // Firma del Técnico
-                    SignatureCaptureView(firmaData: $firmaTecnicoData, title: "Firma del Técnico")
-                }
-                
-                
-                
-                // Sección del Botón Guardar
-                Section {
-                    Button("Guardar Reporte") {
-                        // Validación de campos vacíos
-                        guard !titulo.isEmpty && !detalles.isEmpty && firmaTecnicoData != nil else {
-                            print("DEBUG: Campos incompletos o falta firma del técnico.")
-                            return
-                        }
-                        
-                        // Llama a la función del ViewModel para guardar el reporte
-                        viewModel.agregarReporteConDatos(
-                            titulo: titulo,
-                            detalles: detalles,
-                            firmaCliente: firmaClienteData,
-                            firmaTecnico: firmaTecnicoData,
-                            fotoReporte: fotoReporteData
-                        )
-                        
-                        // Demorar el cierre permite que la lista se actualice primero.
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            dismiss()
-                        }
-                    }
-                    .font(.headline)
-                    .frame(maxWidth: .infinity) // Ocupa todo el ancho
-                }
-                
-            }
-            .navigationTitle("Nuevo Reporte")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancelar") {
-                        dismiss()
-                    }
-                }
-            }
-        }
-        // Para asegurar que el modal ocupe toda la pantalla en iPad
-        .presentationDetents([.large])
-    }
+	@EnvironmentObject var viewModel: ReporteViewModel
+	@Environment(\.dismiss) var dismiss
+	
+	// --- ESTADOS DE DATOS ---
+	// Generales
+	@State private var cliente: String = ""
+	@State private var marca: String = ""
+	@State private var modelo: String = ""
+	@State private var serie: String = ""
+	@State private var contrato: String = ""
+	@State private var mesCorrespondiente: String = ""
+	@State private var responsable: String = ""
+	@State private var domicilio: String = ""
+	@State private var efectuadoPor: String = ""
+	@State private var telefono: String = ""
+	
+	// Actividades
+	@State private var actividades = ActividadesChecklist()
+	
+	// Tablas Técnicas (Instancias vacías para llenar)
+	@State private var salidaConsumo = ParametrosFase()
+	@State private var salidaRegulado = ParametrosFase()
+	@State private var salidaReserva = ParametrosFase()
+	
+	@State private var entradaConsumo = ParametrosFase()
+	@State private var entradaVoltaje = ParametrosFase()
+	
+	// Campos sueltos
+	@State private var condicionesSincronia: String = ""
+	@State private var porcentajeCarga: String = ""
+	@State private var temperatura: String = ""
+	@State private var refacciones: String = ""
+	@State private var observaciones: String = ""
+	
+	// Multimedia
+	@State private var firmaClienteData: Data?
+	@State private var firmaTecnicoData: Data?
+	@State private var fotoReporteData: Data?
+	
+	// Control de UI (Qué acordeones están abiertos)
+	@State private var isExpandedSalida = false
+	@State private var isExpandedEntrada = false
+	@State private var isExpandedActividades = true
+	
+	var body: some View {
+		NavigationView {
+			Form {
+				// SECCIÓN 1: DATOS DEL EQUIPO (Siempre visible)
+				Section(header: Text("Datos Generales")) {
+					TextField("Usuario / Cliente", text: $cliente)
+					
+					TextField("Correspondiente al mes de", text: $mesCorrespondiente)
+					
+					HStack {
+						TextField("Marca", text: $marca)
+						TextField("Modelo", text: $modelo)
+					}
+					HStack {
+						TextField("No. Serie", text: $serie)
+						TextField("No. Contrato", text: $contrato)
+					}
+					
+					TextField("Responsable", text: $responsable)
+					TextField("Domicilio", text: $domicilio)
+					
+					HStack {
+						TextField("Efectuado por", text: $efectuadoPor)
+						TextField("Teléfono", text: $telefono)
+					}
+				}
+				
+				// SECCIÓN 2: CHECKLIST (Acordeón)
+				DisclosureGroup("Descripción de Actividades", isExpanded: $isExpandedActividades) {
+					Toggle("Rev. de Medidores", isOn: $actividades.revMedidores)
+					Toggle("Inspección Externa", isOn: $actividades.inspExterna)
+					Toggle("Inspección Interna", isOn: $actividades.inspInterna)
+					Toggle("Rev. de Ventiladores", isOn: $actividades.revVentiladores)
+					Toggle("Rev. de Paneles", isOn: $actividades.revPaneles)
+					Toggle("Rev. Filtros de Aire", isOn: $actividades.revFiltros)
+					Toggle("Limpieza Aérea", isOn: $actividades.limpiezaAerea)
+					Toggle("Limpieza Int. UPS", isOn: $actividades.limpiezaInt)
+				}
+				
+				// SECCIÓN 3: PARÁMETROS DE SALIDA (Tabla Compleja)
+				DisclosureGroup("Parámetros de Salida", isExpanded: $isExpandedSalida) {
+					ScrollView(.horizontal) { // Scroll horizontal por si acaso
+						VStack(alignment: .leading) {
+							Text("Consumo de la Carga").font(.headline).padding(.top)
+							Grid {
+								HeaderTablaView()
+								FilaFaseInputView(titulo: "Fase A", lectura: $salidaConsumo.faseA)
+								FilaFaseInputView(titulo: "Fase B", lectura: $salidaConsumo.faseB)
+								FilaFaseInputView(titulo: "Fase C", lectura: $salidaConsumo.faseC)
+							}
+							
+							Divider()
+							Text("Voltaje y Frecuencia Regulado").font(.headline).padding(.top)
+							Grid {
+								HeaderTablaView()
+								FilaFaseInputView(titulo: "Fase A", lectura: $salidaRegulado.faseA)
+								FilaFaseInputView(titulo: "Fase B", lectura: $salidaRegulado.faseB)
+								FilaFaseInputView(titulo: "Fase C", lectura: $salidaRegulado.faseC)
+							}
+							
+							// Campos extra de esta sección
+							HStack {
+								Text("Condiciones Sincronía:")
+								TextField("Sí/No", text: $condicionesSincronia)
+							}.padding(.top)
+							HStack {
+								TextField("% Carga Usada", text: $porcentajeCarga)
+								TextField("Temp. Ambiente", text: $temperatura)
+							}
+						}
+						.padding(.vertical)
+					}
+				}
+				
+				// SECCIÓN 4: PARÁMETROS DE ENTRADA
+				DisclosureGroup("Parámetros de Entrada y Baterías", isExpanded: $isExpandedEntrada) {
+					VStack(alignment: .leading) {
+						Text("Consumo de Entrada").font(.headline)
+						Grid {
+							HeaderTablaView()
+							FilaFaseInputView(titulo: "Fase A", lectura: $entradaConsumo.faseA)
+							FilaFaseInputView(titulo: "Fase B", lectura: $entradaConsumo.faseB)
+							FilaFaseInputView(titulo: "Fase C", lectura: $entradaConsumo.faseC)
+						}
+						
+						Divider().padding(.vertical)
+						
+						Text("Bancos de Baterías e Inversor").font(.headline)
+						// Campos simples para valores únicos
+						HStack {
+							TextField("Volt. Ent. Inversor", text: Binding.constant("")) // Placeholder logic needed
+							TextField("Corriente Ent. Inv.", text: Binding.constant(""))
+						}
+					}
+				}
+				
+				// SECCIÓN 5: REFACCIONES Y OBSERVACIONES
+				Section(header: Text("Refacciones y Observaciones")) {
+					TextField("Refacciones Empleadas", text: $refacciones)
+					TextEditor(text: $observaciones)
+						.frame(height: 100)
+						.overlay(
+							observaciones.isEmpty ? Text("Observaciones generales...").foregroundColor(.gray).padding(8).allowsHitTesting(false) : nil,
+							alignment: .topLeading
+						)
+				}
+				
+				// SECCIÓN 6: MULTIMEDIA (Foto y Firmas)
+				Section(header: Text("Evidencia y Validación")) {
+					ImageCaptureView(fotoData: $fotoReporteData)
+					SignatureCaptureView(firmaData: $firmaClienteData, title: "Firma del Cliente")
+					SignatureCaptureView(firmaData: $firmaTecnicoData, title: "Firma del Técnico")
+				}
+				
+				// BOTÓN GUARDAR
+				Section {
+					Button("Guardar Reporte Completo") {
+						guard !cliente.isEmpty else { return }
+						
+						// Creación del objeto Reporte complejo
+						let nuevoReporte = Reporte(
+							cliente: cliente,
+							mesCorrespondiente: mesCorrespondiente, // Nuevo
+							responsable: responsable,               // Nuevo
+							domicilio: domicilio,                   // Nuevo
+							efectuadoPor: efectuadoPor,             // Nuevo
+							telefono: telefono,                     // Nuevo
+							marca: marca,
+							modelo: modelo,
+							noSerie: serie,
+							noContrato: contrato,
+							fechaCreacion: Date(),
+							usuarioID: viewModel.usuarioActual?.correo ?? "Desconocido",
+							actividades: actividades,
+							salidaConsumo: salidaConsumo,
+							salidaRegulado: salidaRegulado,
+							salidaReserva: salidaReserva,
+							condicionesSincronia: condicionesSincronia,
+							porcentajeCarga: porcentajeCarga,
+							temperatura: temperatura,
+							entradaConsumo: entradaConsumo,
+							entradaVoltaje: entradaVoltaje,
+							refacciones: refacciones,
+							detalles: observaciones,
+							firmaCliente: firmaClienteData,
+							firmaTecnico: firmaTecnicoData,
+							fotoReporte: fotoReporteData
+						)
+						
+						viewModel.guardarNuevoReporte(nuevoReporte)
+						
+						DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+							dismiss()
+						}
+					}
+					.frame(maxWidth: .infinity)
+					.font(.headline)
+				}
+			}
+			.navigationTitle("Nuevo Mantenimiento")
+		}
+	}
 }
