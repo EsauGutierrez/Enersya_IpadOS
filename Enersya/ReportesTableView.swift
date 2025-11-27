@@ -71,6 +71,7 @@ struct ReportesTableView: View {
                             ReportesTableRow(reporte: reporte)
                         }
                     }
+					.onDelete(perform: deleteReports)
                 }
                 .listStyle(.plain) // Elimina los estilos de celda del listado por defecto
             }
@@ -101,6 +102,15 @@ struct ReportesTableView: View {
         .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always))
         .navigationViewStyle(.stack) // Para asegurar que ocupe todo el espacio
     }
+	func deleteReports(at offsets: IndexSet) {
+			// 1. Identificar qué reportes se quieren borrar de la lista VISIBLE
+			let reportesParaBorrar = offsets.map { filteredAndSortedReports[$0] }
+			
+			// 2. Pedirle al ViewModel que borre esos reportes específicos
+			for reporte in reportesParaBorrar {
+				viewModel.eliminarReporte(reporte)
+			}
+		}
 }
 
 // Vista para el encabezado de la tabla (con botones de ordenación)

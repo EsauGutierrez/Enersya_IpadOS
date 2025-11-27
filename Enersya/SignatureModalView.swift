@@ -32,14 +32,16 @@ struct SignatureModalView: View {
             VStack(spacing: 15) {
                 Text("Por favor, dibuje la \(title)")
                     .font(.headline)
+                    .padding(.top)
                 
                 // 1. Lienzo de Dibujo
                 SignatureCanvas(signatureData: $currentSignatureData)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                                         .background(Color.white)
-                                        .border(Color.gray)
+                                        .border(Color.gray, width:2)
+                                        .padding(.horizontal)
                 
-                HStack(spacing: 20) {
+                HStack(spacing: 40) {
                     // 2. Botón para Limpiar el Lienzo
                     Button("Borrar") {
                         currentSignatureData = nil
@@ -72,7 +74,6 @@ struct SignatureModalView: View {
                 }
             }
         }
-        // Fuerza el modal a ser grande en iPad
-        .presentationDetents([.large])
+        .navigationViewStyle(.stack)
     }
 }

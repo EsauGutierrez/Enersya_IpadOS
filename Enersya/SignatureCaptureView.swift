@@ -48,7 +48,7 @@ struct SignatureCaptureView: View {
             }
         }
         // 4. Adjuntar el modal a la vista
-        .sheet(isPresented: $showingSignatureModal) {
+        .fullScreenCover(isPresented: $showingSignatureModal) {
             SignatureModalView(signatureResult: $firmaData, title: title)
         }
     }

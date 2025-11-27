@@ -118,6 +118,16 @@ class ReporteViewModel: ObservableObject {
         
         guardarReportes()
     }
+	
+	func eliminarReporte(_ reporte: Reporte) {
+			// Buscamos el índice del reporte en el array principal usando su ID
+			if let index = reportes.firstIndex(where: { $0.id == reporte.id }) {
+				reportes.remove(at: index)
+				// IMPORTANTE: Guardar los cambios inmediatamente
+				guardarReportes()
+				print("🗑️ Reporte eliminado: \(reporte.titulo)")
+			}
+		}
     
     // Función de muestra (para la primera ejecución)
     private func cargarDatosDeMuestra() {
@@ -131,71 +141,144 @@ class ReporteViewModel: ObservableObject {
 
 
 extension ReporteViewModel {
-    
-    func generarPDF(para reporte: Reporte) -> URL? {
-        // 1. Definición del Formato y Tamaño de Página (A4)
-        let pageSize = CGRect(x: 0, y: 0, width: 595.2, height: 841.8)
-        let renderer = UIGraphicsPDFRenderer(bounds: pageSize, format: UIGraphicsPDFRendererFormat())
-        
-        // 2. Definición del Archivo de Destino
-        let nombreArchivo = "Reporte_\(UUID().uuidString).pdf" // Usamos UUID para asegurar unicidad
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent(nombreArchivo)
-        
-        // 3. Márgenes y Posición Inicial
-        let margin: CGFloat = 40
-        var currentY: CGFloat = margin // Posición vertical inicial
-        let usableWidth = pageSize.width - (2 * margin)
-        
-        do {
-            try renderer.writePDF(to: url) { context in
-                context.beginPage()
-                
-                // --- Dibujo de la estructura del reporte ---
-                
-                // Título (Fuente Grande y Negrita)
-                let titleFont = UIFont.systemFont(ofSize: 28, weight: .bold)
-                let titleAttributes: [NSAttributedString.Key: Any] = [.font: titleFont]
-                let titleString = NSAttributedString(string: reporte.titulo, attributes: titleAttributes)
-                
-                let titleSize = titleString.size()
-                
-                // Dibuja el título
-                titleString.draw(at: CGPoint(x: margin, y: currentY))
-                currentY += titleSize.height + 20 // Mueve hacia abajo
-                
-                // Separador
-                let lineRect = CGRect(x: margin, y: currentY, width: usableWidth, height: 1)
-                context.cgContext.setFillColor(UIColor.lightGray.cgColor)
-                context.cgContext.fill(lineRect)
-                currentY += 10
-                
-                // Metadatos (Fuente Pequeña)
-                let metaFont = UIFont.systemFont(ofSize: 12)
-                let metaText = "Fecha: \(reporte.fechaCreacion.formatted(date: .long, time: .shortened)) | Usuario: \(reporte.usuarioID)"
-                metaText.draw(at: CGPoint(x: margin, y: currentY), withAttributes: [.font: metaFont, .foregroundColor: UIColor.darkGray])
-                currentY += 40
-                
-                // Detalles del Reporte (Fuente Normal)
-                let bodyFont = UIFont.systemFont(ofSize: 14)
-                let bodyAttributes: [NSAttributedString.Key: Any] = [.font: bodyFont]
-                let bodyString = NSAttributedString(string: reporte.detalles, attributes: bodyAttributes)
-                
-                // Área donde se dibujará el cuerpo del texto
-                let textRect = CGRect(x: margin, y: currentY, width: usableWidth, height: pageSize.height - currentY - margin)
-                
-                // Dibuja el texto dentro del área definida
-                bodyString.draw(in: textRect)
-                
-                // --- Fin del dibujo ---
-            }
-            // Si llegamos aquí, el PDF se creó con éxito
-            return url
-            
-        } catch {
-            // Imprime el error exacto que impide la generación
-            print("❌ ERROR al generar PDF: \(error.localizedDescription)")
-            // Devuelve nil si hay un error
-            return nil
-        }
-    }
+		
+		func generarPDF(para reporte: Reporte) -> URL? {
+			// 1. Configuración de página A4
+			let pageSize = CGRect(x: 0, y: 0, width: 595.2, height: 841.8)
+			let renderer = UIGraphicsPDFRenderer(bounds: pageSize, format: UIGraphicsPDFRendererFormat())
+			
+			let nombreArchivo = "Reporte_\(UUID().uuidString).pdf"
+			let url = FileManager.default.temporaryDirectory.appendingPathComponent(nombreArchivo)
+
+			// Configuración de márgenes
+			let margin: CGFloat = 40
+			var currentY: CGFloat = margin
+			let usableWidth = pageSize.width - (2 * margin)
+			
+			do {
+				try renderer.writePDF(to: url) { context in
+					context.beginPage()
+					
+					// --- A. ENCABEZADO ---
+					// Título
+					let titleFont = UIFont.systemFont(ofSize: 26, weight: .bold)
+					let titleAttributes: [NSAttributedString.Key: Any] = [.font: titleFont]
+					let titleString = NSAttributedString(string: reporte.titulo, attributes: titleAttributes)
+					titleString.draw(at: CGPoint(x: margin, y: currentY))
+					currentY += titleString.size().height + 10
+					
+					// Metadatos (Fecha y Usuario)
+					let metaFont = UIFont.systemFont(ofSize: 12)
+					let metaText = "Fecha: \(reporte.fechaCreacion.formatted(date: .long, time: .shortened)) | Técnico: \(reporte.usuarioID)"
+					metaText.draw(at: CGPoint(x: margin, y: currentY), withAttributes: [.font: metaFont, .foregroundColor: UIColor.gray])
+					currentY += 20
+					
+					// Línea separadora
+					let contextCG = context.cgContext
+					contextCG.setStrokeColor(UIColor.lightGray.cgColor)
+					contextCG.setLineWidth(1.0)
+					contextCG.move(to: CGPoint(x: margin, y: currentY))
+					contextCG.addLine(to: CGPoint(x: pageSize.width - margin, y: currentY))
+					contextCG.strokePath()
+					currentY += 20
+					
+					// --- B. DETALLES (TEXTO) ---
+					let bodyFont = UIFont.systemFont(ofSize: 12)
+					let bodyAttributes: [NSAttributedString.Key: Any] = [.font: bodyFont]
+					let bodyString = NSAttributedString(string: "Descripción:\n" + reporte.detalles, attributes: bodyAttributes)
+					
+					// Calcular altura necesaria para el texto
+					let textHeight = bodyString.boundingRect(
+						with: CGSize(width: usableWidth, height: .greatestFiniteMagnitude),
+						options: .usesLineFragmentOrigin,
+						context: nil
+					).height
+					
+					let textRect = CGRect(x: margin, y: currentY, width: usableWidth, height: textHeight)
+					bodyString.draw(in: textRect)
+					
+					currentY += textHeight + 20 // Actualizamos Y basándonos en el texto escrito
+					
+					// --- C. FOTO DEL REPORTE ---
+					if let fotoData = reporte.fotoReporte, let image = UIImage(data: fotoData) {
+						// Título de sección
+						"EVIDENCIA FOTOGRÁFICA:".draw(at: CGPoint(x: margin, y: currentY), withAttributes: [.font: UIFont.boldSystemFont(ofSize: 12)])
+						currentY += 15
+						
+						// Definir tamaño de imagen (máximo media página de alto, ancho completo)
+						let maxHeight: CGFloat = 250
+						let aspectRatio = image.size.width / image.size.height
+						let targetHeight = min(usableWidth / aspectRatio, maxHeight)
+						let targetWidth = targetHeight * aspectRatio
+						
+						// Centrar imagen
+						let xOffset = (usableWidth - targetWidth) / 2
+						
+						let imageRect = CGRect(x: margin + xOffset, y: currentY, width: targetWidth, height: targetHeight)
+						image.draw(in: imageRect)
+						
+						currentY += targetHeight + 30
+					}
+					
+					// Chequeo de seguridad: Si estamos muy abajo, nueva página para firmas
+					if currentY > (pageSize.height - 150) {
+						context.beginPage()
+						currentY = margin
+					}
+					
+					// --- D. FIRMAS ---
+					let signatureWidth = (usableWidth - 20) / 2 // Dos columnas
+					let signatureHeight: CGFloat = 80
+					let signatureY = currentY
+					
+					// 1. Firma Cliente (Izquierda)
+					drawSignatureBlock(
+						title: "Firma del Cliente",
+						data: reporte.firmaCliente,
+						rect: CGRect(x: margin, y: signatureY, width: signatureWidth, height: signatureHeight)
+					)
+					
+					// 2. Firma Técnico (Derecha)
+					drawSignatureBlock(
+						title: "Firma del Técnico",
+						data: reporte.firmaTecnico,
+						rect: CGRect(x: margin + signatureWidth + 20, y: signatureY, width: signatureWidth, height: signatureHeight)
+					)
+				}
+				return url
+				
+			} catch {
+				print("❌ ERROR al generar PDF: \(error.localizedDescription)")
+				return nil
+			}
+		}
+		
+		// Función auxiliar para dibujar bloques de firma
+		private func drawSignatureBlock(title: String, data: Data?, rect: CGRect) {
+			// Dibujar línea de firma
+			let lineY = rect.maxY - 15
+			let path = UIBezierPath()
+			path.move(to: CGPoint(x: rect.minX + 10, y: lineY))
+			path.addLine(to: CGPoint(x: rect.maxX - 10, y: lineY))
+			UIColor.black.setStroke()
+			path.lineWidth = 1
+			path.stroke()
+			
+			// Texto debajo de la línea
+			let style = NSMutableParagraphStyle()
+			style.alignment = .center
+			let attributes: [NSAttributedString.Key: Any] = [
+				.font: UIFont.systemFont(ofSize: 10),
+				.paragraphStyle: style
+			]
+			
+			title.draw(in: CGRect(x: rect.minX, y: lineY + 5, width: rect.width, height: 15), withAttributes: attributes)
+			
+			// Dibujar la imagen de la firma si existe
+			if let data = data, let image = UIImage(data: data) {
+				// Ajustar imagen para que "flote" sobre la línea
+				let imageRect = CGRect(x: rect.minX + 10, y: rect.minY, width: rect.width - 20, height: rect.height - 20)
+				image.draw(in: imageRect)
+			}
+	}
 }

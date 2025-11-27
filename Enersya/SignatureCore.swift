@@ -29,11 +29,17 @@ class SignatureView: UIView {
         super.init(frame: frame)
         // Fondo blanco para que la tinta negra sea visible
         backgroundColor = .white
+        
+        self.isMultipleTouchEnabled = false // Evita gestos multitáctiles extraños
+        self.isExclusiveTouch = true        // Intenta bloquear toques en otras vistas
+            
     }
     
     required init?(coder: NSCoder) {
         super.init(coder: coder)
         backgroundColor = .white
+        self.isMultipleTouchEnabled = false
+        self.isExclusiveTouch = true
     }
     
     // Mínima implementación del dibujo a mano alzada
@@ -76,8 +82,6 @@ class SignatureView: UIView {
     func clear() {
         layer.contents = nil
         lastPoint = nil
-        // Notificar que se ha limpiado (se guarda un Data vacío)
-        delegate?.signatureViewDidFinishDrawing(signatureView: self, image: UIImage())
     }
 }
 
@@ -90,10 +94,16 @@ struct SignatureCanvas: UIViewRepresentable {
     func makeUIView(context: Context) -> SignatureView {
         let view = SignatureView()
         view.delegate = context.coordinator
+        view.isMultipleTouchEnabled = false
+        view.isExclusiveTouch = true
         return view
     }
 
-    func updateUIView(_ uiView: SignatureView, context: Context) {}
+    func updateUIView(_ uiView: SignatureView, context: Context) {
+        if signatureData == nil {
+                    uiView.clear()
+        }
+    }
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
