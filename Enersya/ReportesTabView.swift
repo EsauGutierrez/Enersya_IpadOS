@@ -47,5 +47,8 @@ struct PerfilView: View {
             }
             .navigationTitle("Ajustes de Perfil")
         }
+        // *** ESTA ES LA LÍNEA QUE LO SOLUCIONA ***
+        // Fuerza a que la vista ocupe todo el ancho disponible y no cree un Sidebar
+        .navigationViewStyle(.stack)
     }
 }

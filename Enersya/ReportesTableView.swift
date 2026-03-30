@@ -92,7 +92,7 @@ struct ReportesTableView: View {
             }
         }
         // NUEVA SECCIÓN: Adjuntar el modal a la vista
-        .sheet(isPresented: $showingNewReportSheet) {
+        .fullScreenCover(isPresented: $showingNewReportSheet) {
             // El formulario se presenta y se le inyecta el ViewModel
             NuevoReporteView()
                 .environmentObject(viewModel)
@@ -200,3 +200,4 @@ struct ReportesTableRow: View {
         }
     }
 }
+

@@ -8,6 +8,11 @@
 // ReportesSplitView.swift
 
 import SwiftUI
+// Estructura auxiliar para manejar el estado de la URL de forma segura
+struct PDFItem: Identifiable {
+    let id = UUID()
+    let url: URL
+}
 
 struct ReportesSplitView: View {
     @EnvironmentObject var viewModel: ReporteViewModel
@@ -34,7 +39,7 @@ struct ReportesSplitView: View {
                     .foregroundColor(.secondary)
             }
         }
-        .sheet(isPresented: $mostrarFormularioNuevoReporte) {
+        .fullScreenCover(isPresented: $mostrarFormularioNuevoReporte) {
             // Presenta el formulario como un modal
             NuevoReporteView()
                 .environmentObject(viewModel)
@@ -48,12 +53,8 @@ struct ReporteDetalleView: View {
     let reporte: Reporte
     @EnvironmentObject var viewModel: ReporteViewModel
     
-    @State private var pdfURL: URL? = nil
-    @State private var isSharing = false
-    // Cambiamos el nombre de isSharing para que refleje la nueva funcionalidad
-    @State private var showingPDFPreview = false
-    // Mantenemos isSharing para cuando se quiera COMPARTIR desde el botón en detalle
-    
+    // REEMPLAZAMOS pdfURL y showingPDFPreview por esto:
+    @State private var pdfItem: PDFItem? = nil
 
     var body: some View {
         ScrollView {
@@ -85,29 +86,27 @@ struct ReporteDetalleView: View {
                 
                 Spacer()
                 
-                Button("Ver y Compartir PDF") { // Cambiamos el texto del botón
+                Button("Ver y Compartir PDF") {
+                    // Generamos el PDF y lo metemos en nuestro PDFItem
                     if let url = viewModel.generarPDF(para: reporte) {
-                        self.pdfURL = url
-                        self.showingPDFPreview = true // <-- Mostrar la vista previa
+                        self.pdfItem = PDFItem(url: url) // Esto dispara el modal de forma segura
                     }
                 }
-                 .buttonStyle(.borderedProminent)
-                 .controlSize(.large)
-                 .frame(maxWidth: .infinity)
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .frame(maxWidth: .infinity)
             }
-            
-            .sheet(isPresented: $showingPDFPreview) {
-                if let url = pdfURL {
-                    // La vista PDFPreviewView ahora recibirá automáticamente el Environment(\.dismiss)
-                    PDFPreviewView(url: url)
-                }
+            .padding()
+            // NUEVO MODAL USANDO 'item' EN LUGAR DE 'isPresented'
+            .sheet(item: $pdfItem) { item in
+                // Aquí usamos item.url con la seguridad de que jamás estará vacío
+                PDFPreviewView(url: item.url)
             }
-             .padding()
-             .navigationTitle("Detalle")
-             .navigationBarTitleDisplayMode(.inline)
+            .navigationTitle("Detalle")
+            .navigationBarTitleDisplayMode(.inline)
         }
         .navigationTitle("Detalle")
-        .navigationBarTitleDisplayMode(.inline) // Estilo visual para iPad
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
@@ -154,3 +153,4 @@ struct ReportesListView: View {
         }
     }
 }
+
