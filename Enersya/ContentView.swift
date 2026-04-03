@@ -21,7 +21,7 @@ struct LoginView: View {
 	// Estados para los campos
 	@State private var email: String = ""
 	@State private var password: String = ""
-	@State private var showingAlert = false
+	@State private var showingAlert = false  // mantenido para compatibilidad, se controla via errorMensaje
 	
 	var body: some View {
 		ZStack {
@@ -105,21 +105,25 @@ struct LoginView: View {
 				
 				// --- BOTÓN DE LOGIN ---
 				Button(action: {
-					// Acción de Login
-					let exito = viewModel.iniciarSesion(correo: email, contrasena: password)
-					if !exito {
-						showingAlert = true
-					}
+					Task { await viewModel.iniciarSesion(correo: email, contrasena: password) }
 				}) {
-					Text("INICIAR SESIÓN")
-						.font(.headline)
-						.foregroundColor(.white)
-						.frame(maxWidth: .infinity)
-						.padding()
-						.background(Color.blue)
-						.cornerRadius(12)
-						.shadow(color: .blue.opacity(0.3), radius: 5, x: 0, y: 5)
+					Group {
+						if viewModel.cargando {
+							ProgressView()
+								.progressViewStyle(CircularProgressViewStyle(tint: .white))
+						} else {
+							Text("INICIAR SESIÓN")
+								.font(.headline)
+								.foregroundColor(.white)
+						}
+					}
+					.frame(maxWidth: .infinity)
+					.padding()
+					.background(Color.blue)
+					.cornerRadius(12)
+					.shadow(color: .blue.opacity(0.3), radius: 5, x: 0, y: 5)
 				}
+				.disabled(viewModel.cargando)
 				.padding(.top, 10)
 				
 			}
@@ -128,10 +132,13 @@ struct LoginView: View {
 			// y no se estire de borde a borde de la pantalla gigante.
 			.frame(maxWidth: 500)
 		}
-		.alert("Error", isPresented: $showingAlert) {
+		.alert("Error", isPresented: Binding(
+			get: { viewModel.errorMensaje != nil },
+			set: { if !$0 { viewModel.errorMensaje = nil } }
+		)) {
 			Button("OK", role: .cancel) { }
 		} message: {
-			Text("Correo o contraseña incorrectos.\n(Prueba: user@enersya.com / 1234)")
+			Text(viewModel.errorMensaje ?? "")
 		}
 	}
 }

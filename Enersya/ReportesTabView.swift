@@ -40,7 +40,7 @@ struct PerfilView: View {
                     .font(.largeTitle)
                 
                 Button("Cerrar Sesión", role: .destructive) {
-                    viewModel.cerrarSesion()
+                    Task { await viewModel.cerrarSesion() }
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(.red)

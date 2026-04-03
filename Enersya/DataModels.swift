@@ -43,6 +43,7 @@ struct ActividadesChecklist: Codable, Hashable {
 // 4. Modelo Principal del Reporte (Actualizado)
 struct Reporte: Identifiable, Codable, Hashable {
 	var id = UUID()
+    var folio: Int
 	
 	// 1. DATOS GENERALES (Orden Lógico)
 	var cliente: String
@@ -74,6 +75,7 @@ struct Reporte: Identifiable, Codable, Hashable {
 	// 4. PARÁMETROS ENTRADA
 	var entradaConsumo: ParametrosFase = ParametrosFase()
 	var entradaVoltaje: ParametrosFase = ParametrosFase()
+    var parametrosBypass: ParametrosFase = ParametrosFase()
 	var voltajeInversor: String = ""
 	var corrienteInversor: String = ""
 	var corrienteBateria: String = ""
@@ -86,7 +88,7 @@ struct Reporte: Identifiable, Codable, Hashable {
 	// 6. MULTIMEDIA
 	var firmaCliente: Data?
 	var firmaTecnico: Data?
-	var fotoReporte: Data?
+    var fotosReporte: [Data] = []
 	
 	// Propiedad calculada
 	var titulo: String {

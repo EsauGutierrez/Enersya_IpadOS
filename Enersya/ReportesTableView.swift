@@ -108,7 +108,7 @@ struct ReportesTableView: View {
 			
 			// 2. Pedirle al ViewModel que borre esos reportes específicos
 			for reporte in reportesParaBorrar {
-				viewModel.eliminarReporte(reporte)
+				Task { await viewModel.eliminarReporte(reporte) }
 			}
 		}
 }
